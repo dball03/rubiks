@@ -15,7 +15,7 @@ class motorController:
 
         self.serialDevice = serial.Serial(self.serialPort, self.serialBaudRate)
 
-    def sendString(self, solutionString, waitForAck=False, timeoutLen=10):
+    def sendString(self, solutionString, waitForAck=False, timeoutLen=20):
 
         # Workaround for motorController falling over if string does not end
         # with space

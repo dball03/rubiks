@@ -1,4 +1,3 @@
-
 #include <AccelStepper.h>
 
 AccelStepper down (1, 2, 1);
@@ -101,7 +100,7 @@ void loop()
         }
       }
       else {
-        down.moveTo(down.currentPosition() - 203);
+        down.moveTo(down.currentPosition() +603);
         while (down.distanceToGo() != 0) {
           down.run();
         }
@@ -124,7 +123,7 @@ void loop()
         }
       }
       else {
-        front.moveTo(front.currentPosition() - 203);
+        front.moveTo(front.currentPosition() + 603);
         while (front.distanceToGo() != 0) {
           front.run();
         }
@@ -147,7 +146,7 @@ void loop()
         }
       }
       else {
-        right.moveTo(right.currentPosition() - 203);
+        right.moveTo(right.currentPosition() + 603);
         while (right.distanceToGo() != 0) {
           right.run();
         }
@@ -170,7 +169,7 @@ void loop()
         }
       }
       else {
-        back.moveTo(back.currentPosition() - 203);
+        back.moveTo(back.currentPosition() + 603);
         while (back.distanceToGo() != 0) {
           back.run();
         }
@@ -193,7 +192,7 @@ void loop()
         }
       }
       else {
-        left.moveTo(left.currentPosition() - 203);
+        left.moveTo(left.currentPosition() + 603);
         while (left.distanceToGo() != 0) {
           left.run();
         }
@@ -216,7 +215,7 @@ void loop()
         }
       }
       else {
-        up.moveTo(up.currentPosition() - 203);
+        up.moveTo(up.currentPosition() + 603);
         while (up.distanceToGo() != 0) {
           up.run();
         }
