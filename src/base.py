@@ -90,15 +90,15 @@ class guiMain:
         # Pack solve and scramble buttons into their own frame (for placement)
         self.buttonFrame = tk.Frame(container)
 
-        self.scrambleButton = tk.Button(self.buttonFrame, text="Scramble", command=self.scrambleHandler)
-        self.solveButton = tk.Button(self.buttonFrame, text="Solve", command=self.solveHandler)
+        self.scrambleButton = tk.Button(self.buttonFrame, font="Helvetica 16 bold", text="Scramble", command=self.scrambleHandler)
+        self.solveButton = tk.Button(self.buttonFrame, font="Helvetica 16 bold", text="Solve", command=self.solveHandler)
         self.scrambleButton.pack(side=tk.LEFT)
         self.solveButton.pack(side=tk.LEFT)
         # Place packed frame into a window on the main canvas
         self.buttonWindow = self.canvas.create_window(self.windowSize[0], self.windowSize[1], anchor='se', window=self.buttonFrame)
 
         # Place calibration button directly onto main canvas
-        self.calibrateButton = tk.Button(self.canvas, text="Settings menu", command=self.spawnCalibrationWindow)
+        self.calibrateButton = tk.Button(self.canvas, font="Helvetica 16 bold", text="Settings menu", command=self.spawnCalibrationWindow)
         self.calibrateButtonWindow = self.canvas.create_window(0, 0, anchor='nw', window=self.calibrateButton)
 
 
