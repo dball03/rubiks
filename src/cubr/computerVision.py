@@ -10,14 +10,19 @@ from correlation import *
 
 
 class computerVision():
-    def __init__(self):
+    def __init__(self, parent):
+
+        # Keep track of the parent: Used to give access to the motors (for cube
+        # reading sequence)
+        self.parent = parent
+
         # Note this list is used to handle all variations in camera order.
         # In most instances, the index of this array is used, not the sequence
         # in the list itself.
         # ie. no matter the order of cameras in this list, the cameras are
         # iterated through in element order.
-        self.cameras = [0, 1, 2]
-        self.noOfCameras = len(self.cameras)
+        self.cameras = [0]
+        self.noOfPositions = 6
 
         # Work out the absolute paths to expected configuration files
         self.directoryPath = os.path.dirname(os.path.abspath( __file__ ))
@@ -98,6 +103,14 @@ class computerVision():
         self.dragActiveBool = False
         self.dragItemIndex = 0,0
 
+        # TODO
+        self.readSequence = (   'X',
+                                'Z',
+                                'Z',
+                                'X',
+                                'Z',
+                                'Z')    # Back to starting position
+
 
 ################################################################################
 ## Main 'top level' functions
@@ -122,18 +135,10 @@ class computerVision():
         self.colourList = [None]*54
 
         # This section/loop acts on the gathered images to read the colours from the images
-        for cameraNum in range(self.noOfCameras):
+        for position in range(self.noOfPositions):
             self.extractContours(self.maskedImages[cameraNum], cameraNum)
 
         self.colourList = self.extractColoursFromContours(self.contourList, self.colourCorrelation)
-
-        # TODO Assume the centre cubes (ie the orientation of the cube) in this iteration
-        self.colourList[4 ] = "W"
-        self.colourList[13] = "B"
-        self.colourList[22] = "R"
-        self.colourList[31] = "Y"
-        self.colourList[40] = "G"
-        self.colourList[49] = "O"
 
         self.colourList = [ x if x is not None else 'W' for x in self.colourList]
 
@@ -281,9 +286,11 @@ class computerVision():
         self.hsvImages = []
         self.rawImages = []
 
-        for cameraNum in range(self.noOfCameras):
+        for position in range(self.noOfPositions):
             # Get image from camera
-            rawImage = self.getCvImage(cameraNum)
+            # TODO how should the camera index actually be handled? Completely removed?
+            #rawImage = self.getCvImage(position)
+            rawImage = self.getCvImage(self.cameras[0])
             self.rawImages.append(rawImage)
 
             # Convert to HSV
@@ -298,18 +305,21 @@ class computerVision():
 
             # Apply mask to image, and add into list of images
             imageHeight, imageWidth, imageChannels = rawImage.shape
-            portholeMask = self.createPortholeMask(imageHeight, imageWidth, imageChannels, cameraNum)
+            portholeMask = self.createPortholeMask(imageHeight, imageWidth, imageChannels, position)
 
             #self.maskedImages.append(cv2.bitwise_and(rawImage, rawImage, mask = portholeMask))
             self.maskedImages.append(cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask))
 
         # Output debug images
-        for cameraNum in range(self.noOfCameras):
-            cv2.imwrite("outputImages/mask{0}.jpg".format(cameraNum), self.maskedImages[cameraNum])
+        for position in range(self.noOfPositions):
+            cv2.imwrite("outputImages/mask{0}.jpg".format(position), self.maskedImages[position])
+
+            # Move cube to next position
+        self.parent.mc.sendString(self.readSequence[position])
 
 
     def getCvImage(self, cameraNum):
-        rawImage = self.captureImage(cameraNum, True)
+        rawImage = self.captureImage(cameraNum)
 
         return rawImage
 
@@ -336,9 +346,7 @@ class computerVision():
             image = self.applyColourConstancyRGB(image)
 
         if self.highlightRoiBool:
-            # self.cameras is used to obtain ACTUAL camera number, not the index
-            # Hence, the index in correlation also refers to the actual camera number
-            for coordinates in self.correlation[self.cameras[self.guiDisplayCameraIndex]]:
+            for coordinates in self.correlation[self.currentCubeOrientation]:
                 if (coordinates != 0 and coordinates is not None):
                     # Draw Region of Interest Circle on the GUI image (in black)
                     cv2.circle(image, coordinates, self.offset, (0, 0, 0) , 2)
@@ -351,8 +359,8 @@ class computerVision():
 
             for contour in self.contourList:
                 if contour is not None:
-                    contourCameraNum = contour[2]
-                    if (contour is not None and contourCameraNum == self.guiDisplayCameraIndex):
+                    contourPositionNum = contour[2]
+                    if (contour is not None and contourPositionNum == self.currentCubeOrientation):
                         contourArray = contour[0]
                         # Draw contour outline in the average colour of the contour contents
                         contourHsvColour = np.copy(contour[3])
@@ -415,11 +423,11 @@ class computerVision():
 ################################################################################
 
     def nextGuiImageSource(self):
-        if self.guiDisplayCameraIndex == (len(self.captureObjects) -1):
-            # Wrap to start of camera list
+        if self.currentCubeOrientation == (self.noOfPositions -1):
+            self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
             self.guiDisplayCameraIndex = 0
-
         else:
+            self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
             self.guiDisplayCameraIndex += 1
 
 
@@ -445,7 +453,7 @@ class computerVision():
 
         cubePosition = self.correlateCubePosition(self.guiDisplayCameraIndex, eventCoordinates[0], eventCoordinates[1])
 
-        if cubePosition is not None and cubePosition < len(self.correlation[self.cameras[self.guiDisplayCameraIndex], ]):
+        if cubePosition is not None and cubePosition < len(self.correlation[self.currentCubeOrientation]):
             # If valid (ie in range) region is found, update the correlation of this clicked
             # region to the new coordinate values
             self.dragActiveBool = True
@@ -474,8 +482,7 @@ class computerVision():
         # currently displayed image.
 
         # TODO is this number actually correct?
-        cameraNum = self.cameras[self.guiDisplayCameraIndex]
-        print("Recalibrated colour {} to coords {} on camera {}".format(colourInitial, coords, cameraNum))
+        print("Recalibrated colour {} to coords {} on camera {}".format(colourInitial, coords, self.currentCubeOrientation))
 
         # Update images to ensure we are referencing the latest state
         self.populateCvImages()
@@ -539,7 +546,7 @@ class computerVision():
         # Create blank 'white' mask
         cubiesMaskTemp = np.zeros((height, width, channels), np.uint8)
 
-        for coordinates in self.correlation[self.cameras[cameraNum]]:
+        for coordinates in self.correlation[self.currentCubeOrientation]:
             if (coordinates != 0 and coordinates is not None):
                 cv2.circle(cubiesMaskTemp, coordinates, self.offset, (255,255,255), -1)
 
@@ -661,12 +668,15 @@ class computerVision():
         # For the list of contours (namely including colours in positional list)
         # work out (or assume in this case) the relationship between the colour
         # of the faces, and what face notation that corresponds to.
-        temp = {    'Y':'D',
-                    'B':'R',
-                    'O':'B',
-                    'G':'L',
-                    'R':'F',
-                    'W':'U'}
+        # Colours of the centre faces are used to determine the orientation
+        # relationship
+        temp = {}
+        temp = {self.colourList[4]: 'U'}
+        temp = {self.colourList[13]: 'R'}
+        temp = {self.colourList[22]: 'F'}
+        temp = {self.colourList[31]: 'D'}
+        temp = {self.colourList[40]: 'L'}
+        temp = {self.colourList[49]: 'B'}
 
         return temp
 

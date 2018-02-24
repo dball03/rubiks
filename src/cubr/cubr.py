@@ -25,7 +25,7 @@ class cubr():
     def __init__(self):
 
         # TODO handle exceptions of trying to create these objects
-        self.cv = computerVision()
+        self.cv = computerVision(self)
         self.solver = cubeSolver()
         self.mc = motorController()
 
