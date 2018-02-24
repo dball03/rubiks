@@ -10,11 +10,10 @@ from correlation import *
 
 
 class computerVision():
-    def __init__(self, parent):
+    def __init__(self, motorController):
 
-        # Keep track of the parent: Used to give access to the motors (for cube
-        # reading sequence)
-        self.parent = parent
+        # NOTE Hack: Take motorController object for the cube reading sequence
+        self.mc = motorController
 
         # Note this list is used to handle all variations in camera order.
         # In most instances, the index of this array is used, not the sequence
@@ -161,10 +160,7 @@ class computerVision():
         sortingList = []
 
         numGroups = 6
-
         groupWidth = len(contourList)/numGroups
-        # NOTE Exclude centres for this robot version
-        groupWidth -= 1
 
         # Form more concise list to make this sorting easier
         # We only care about the average colour, and its cube position
@@ -315,7 +311,7 @@ class computerVision():
             cv2.imwrite("outputImages/mask{0}.jpg".format(position), self.maskedImages[position])
 
             # Move cube to next position
-        self.parent.mc.sendString(self.readSequence[position])
+        self.mc.sendString(self.readSequence[position])
 
 
     def getCvImage(self, cameraNum):

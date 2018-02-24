@@ -25,9 +25,9 @@ class cubr():
     def __init__(self):
 
         # TODO handle exceptions of trying to create these objects
-        self.cv = computerVision(self)
         self.solver = cubeSolver()
         self.mc = motorController()
+        self.cv = computerVision(self.mc)
 
         # Pre-defined list of the solved state: used for verification
         self.solvedState = ('U', 'U', 'U', 'U', 'U', 'U', 'U', 'U', 'U',
