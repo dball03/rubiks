@@ -94,7 +94,7 @@ class computerVision():
         # Defines which camera's image will be output to the GUI:
         # This is done to confine of the number of cameras, capture objects etc
         # inside this computerVision class
-        self.guiDisplayCameraIndex = 0
+        self.currentCubeOrientation = 0
         self.highlightRoiBool = False
         self.highlightContoursBool = False
         self.applyColourConstancyBool = False
@@ -135,7 +135,7 @@ class computerVision():
 
         # This section/loop acts on the gathered images to read the colours from the images
         for position in range(self.noOfPositions):
-            self.extractContours(self.maskedImages[cameraNum], cameraNum)
+            self.extractContours(self.maskedImages[position], position)
 
         self.colourList = self.extractColoursFromContours(self.contourList, self.colourCorrelation)
 
@@ -315,7 +315,7 @@ class computerVision():
 
 
     def getCvImage(self, cameraNum):
-        rawImage = self.captureImage(cameraNum)
+        rawImage = self.captureImage(cameraNum, True)
 
         return rawImage
 
@@ -324,7 +324,7 @@ class computerVision():
         # - Get image from relevant camera
         # - Convert from BGR to RGB
         # - Apply filters and debug info as required
-        frame = self.captureImage(self.guiDisplayCameraIndex, False)
+        frame = self.captureImage(self.currentCubeOrientation, False)
 
         # Draw the visual debug information onto the frame
         frame = self.drawGuiDebug(frame)
@@ -421,10 +421,10 @@ class computerVision():
     def nextGuiImageSource(self):
         if self.currentCubeOrientation == (self.noOfPositions -1):
             self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
-            self.guiDisplayCameraIndex = 0
+            self.currentCubeOrientation = 0
         else:
             self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
-            self.guiDisplayCameraIndex += 1
+            self.currentCubeOrientation += 1
 
 
     def setRoiHighlighting(self, stateBool):
@@ -447,13 +447,13 @@ class computerVision():
         # Find the element in correlation (if any) that matches the clicked
         # coordinates, within the distance of the RoI radius
 
-        cubePosition = self.correlateCubePosition(self.guiDisplayCameraIndex, eventCoordinates[0], eventCoordinates[1])
+        cubePosition = self.correlateCubePosition(self.currentCubeOrientation, eventCoordinates[0], eventCoordinates[1])
 
         if cubePosition is not None and cubePosition < len(self.correlation[self.currentCubeOrientation]):
             # If valid (ie in range) region is found, update the correlation of this clicked
             # region to the new coordinate values
             self.dragActiveBool = True
-            self.dragItemIndex = self.guiDisplayCameraIndex, cubePosition
+            self.dragItemIndex = self.currentCubeOrientation, cubePosition
             self.correlation[self.dragItemIndex] = eventCoordinates
         else:
             # Valid RoI could not be found.
@@ -538,11 +538,11 @@ class computerVision():
 ## Computer vision processing and helper functions
 ################################################################################
 
-    def createPortholeMask(self, height, width, channels, cameraNum):
+    def createPortholeMask(self, height, width, channels, imageNum):
         # Create blank 'white' mask
         cubiesMaskTemp = np.zeros((height, width, channels), np.uint8)
 
-        for coordinates in self.correlation[self.currentCubeOrientation]:
+        for coordinates in self.correlation[imageNum]:
             if (coordinates != 0 and coordinates is not None):
                 cv2.circle(cubiesMaskTemp, coordinates, self.offset, (255,255,255), -1)
 
@@ -552,13 +552,13 @@ class computerVision():
         return cubiesMaskFinal
 
 
-    def correlateCubePosition(self, cameraNum, contourX, contourY):
+    def correlateCubePosition(self, imageNum, contourX, contourY):
         # Return the cube position that corresponds to a particular camera and
         # set of coordinates:
         # Returns None if no corresponding cube position is found
         positionCount = 0
 
-        for coordinates in self.correlation[cameraNum,]:
+        for coordinates in self.correlation[imageNum,]:
         # TODO This is a square, not a circle!
             if (coordinates != 0 and coordinates is not None):
                 if (math.fabs(coordinates[0] - contourX) < self.offset and
@@ -602,7 +602,7 @@ class computerVision():
         self.cubeState[listPos] = colour
 
 
-    def extractContours(self, image, cameraNum):
+    def extractContours(self, image, imageNum):
         # Find the largest contour that exists at each RoI (within the given camera)
         # Key data about each contour is populated into self.contourList for
         # Further processing elsewhere.
@@ -633,7 +633,7 @@ class computerVision():
                 else:
                     cX, cY = 0, 0
 
-                listPosition = self.correlateCubePosition(cameraNum, cX, cY)
+                listPosition = self.correlateCubePosition(imageNum, cX, cY)
                 if (listPosition is not None):
                     # Contour exists at a valid cube location
                     if ((self.contourList[listPosition] is None) or (self.contourList[listPosition][1] < area)):
@@ -649,8 +649,8 @@ class computerVision():
                         averageHsv = np.rint(cv2.mean(image, contourMask))[:3]
 
                         # Add entry to contour list
-                        # NOTE Contour inserted as 'contour, area, cameraNum, averageHsvColour'
-                        self.contourList[listPosition] = [c, area, cameraNum, averageHsv]
+                        # NOTE Contour inserted as 'contour, area, imageNum, averageHsvColour'
+                        self.contourList[listPosition] = [c, area, imageNum, averageHsv]
 
 
     def getColourMask(self, hsvImage, lowerThreshold, upperThreshold):
