@@ -1,5 +1,4 @@
-
-# cubr is the main class for the solver, including subclasses responsible for:
+# Cuber is the main class for the solver, including subclasses responsible for:
 #   -computer vision on Rubik's cube
 #   -solving algorithm for producing solution sequence
 #   -motor control
@@ -21,7 +20,7 @@ from random import randint
 
 import time
 
-class cubr():
+class Cuber():
     def __init__(self):
 
         # TODO handle exceptions of trying to create these objects
@@ -91,23 +90,36 @@ class cubr():
             print("Could not verify solution success")
 
 
-    def scramble(self):
-        scramble = []
+    def scrambleCube(self):
+        scrambleSequence = []
 
         moves = randint(10,30)
 
+        operation = None
+        lastOperation = None
+
         for x in range(0, moves):
             operation = randint(0,5)
+            while (operation == lastOperation):
+                operation = randint(0,5)
+
+            lastOperation = operation
 
             # Perform half turn (2X) if 1
-            double = randint(0,1)
+            rotation = randint(0,2)
 
-            if double == 0 :
-                scramble.append(self.colours[operation])
+            if rotation == 0 :
+                # Apply ACW rotation
+                scrambleSequence.append(self.colours[operation] + "'")
+            elif rotation == 1:
+                # Apply half turn (180 degree) rotation
+                scrambleSequence.append(self.colours[operation] + "2")
             else:
-                scramble.append("2"+self.colours[operation])
+                # Normal CW rotation
+                scrambleSequence.append(self.colours[operation])
 
-        scrambleString = ' '.join(scramble)
+        scrambleString = ' '.join(scrambleSequence)
+        print("scramble:{}".format(scrambleString))
 
         self.mc.sendString(scrambleString, waitForAck=True)
 
