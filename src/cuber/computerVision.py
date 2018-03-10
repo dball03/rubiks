@@ -145,6 +145,9 @@ class computerVision():
         # ie Correlate the colour letter to the face notation
         self.colourFaceCorrelation = self.getColourFaceCorrelation()
 
+        if len(self.colourFaceCorrelation) != 6:
+            raise Exception("Computer vision did not obtain 6 unique cube centres")
+
         # Use colour-face correlation to convert colour list into cube state
         self.cubeState = self.convertColoursToFaceNotation(self.colourList)
         print(self.cubeState)
@@ -186,12 +189,12 @@ class computerVision():
             #self.maskedImages.append(cv2.bitwise_and(rawImage, rawImage, mask = portholeMask))
             self.maskedImages.append(cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask))
 
+            # Move cube to next position
+            self.mc.sendString(self.readSequence[position])
+
         # Output debug images
         for position in range(self.noOfPositions):
             cv2.imwrite("outputImages/mask{0}.jpg".format(position), self.maskedImages[position])
-
-            # Move cube to next position
-        self.mc.sendString(self.readSequence[position])
 
 
     def getCvImage(self, cameraNum):
@@ -257,7 +260,7 @@ class computerVision():
 
     def captureImage(self, cameraNumber, clearBufferBool):
         # Helper function for retrieving all images from cameras
-        tempCamera = self.captureObjects[cameraNumber]
+        tempCamera = self.captureObjects[0]
 
         if clearBufferBool:
             # NOTE WORKAROUND
@@ -300,10 +303,10 @@ class computerVision():
 
     def nextGuiImageSource(self):
         if self.currentCubeOrientation == (self.noOfPositions -1):
-            self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
+            self.mc.sendString(self.readSequence[self.currentCubeOrientation])
             self.currentCubeOrientation = 0
         else:
-            self.parent.mc.sendString(self.readSequence[self.currentCubeOrientation])
+            self.mc.sendString(self.readSequence[self.currentCubeOrientation])
             self.currentCubeOrientation += 1
 
 
@@ -365,7 +368,7 @@ class computerVision():
 
         # TODO I don't really know why the coordinates want to be reversed here?
         #colourHsvValue = self.hsvImages[cameraNum][coords]
-        colourHsvValue = self.hsvImages[cameraNum][coords[1], coords[0]]
+        colourHsvValue = self.hsvImages[self.currentCubeOrientation][coords[1], coords[0]]
         self.colourCorrelation[colourInitial] = colourHsvValue
 
 
@@ -547,12 +550,12 @@ class computerVision():
         # Colours of the centre faces are used to determine the orientation
         # relationship
         temp = {}
-        temp = {self.colourList[4]: 'U'}
-        temp = {self.colourList[13]: 'R'}
-        temp = {self.colourList[22]: 'F'}
-        temp = {self.colourList[31]: 'D'}
-        temp = {self.colourList[40]: 'L'}
-        temp = {self.colourList[49]: 'B'}
+        temp.update({self.colourList[4]: 'U'})
+        temp.update({self.colourList[13]: 'R'})
+        temp.update({self.colourList[22]: 'F'})
+        temp.update({self.colourList[31]: 'D'})
+        temp.update({self.colourList[40]: 'L'})
+        temp.update({self.colourList[49]: 'B'})
 
         return temp
 
@@ -565,8 +568,6 @@ class computerVision():
         numGroups = 6
 
         groupWidth = len(contourList)/numGroups
-        # NOTE Exclude centres for this robot version
-        groupWidth -= 1
 
         # Form more concise list to make this sorting easier
         # We only care about the average colour, and its cube position
