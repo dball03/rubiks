@@ -175,12 +175,9 @@ class computerVision():
             # Convert to HSV
             hsvImage = cv2.cvtColor(rawImage, cv2.COLOR_BGR2HSV)
 
-            # TODO is colour constancy always active? temporarily disabled
             equalisedImage = self.applyColourConstancyHSV(hsvImage)
-            #equalisedImage = hsvImage
 
             self.hsvImages.append(equalisedImage)
-
 
             # Apply mask to image, and add into list of images
             imageHeight, imageWidth, imageChannels = rawImage.shape
@@ -243,7 +240,8 @@ class computerVision():
                         contourArray = contour[0]
                         # Draw contour outline in the average colour of the contour contents
                         contourHsvColour = np.copy(contour[3])
-                        #TODO testing: Brighten  the draw colour for visibility
+
+                        # Brighten  the draw colour slightly for visibility
                         contourHsvColour[2] += 10
 
                         # Convert average HSV colour to RGB for drawing
@@ -366,7 +364,7 @@ class computerVision():
         # Update images to ensure we are referencing the latest state
         self.populateCvImages()
 
-        # TODO I don't really know why the coordinates want to be reversed here?
+        # TODO why do the coordinates want to be reversed here?
         #colourHsvValue = self.hsvImages[cameraNum][coords]
         colourHsvValue = self.hsvImages[self.currentCubeOrientation][coords[1], coords[0]]
         self.colourCorrelation[colourInitial] = colourHsvValue
@@ -441,8 +439,10 @@ class computerVision():
         # Returns None if no corresponding cube position is found
         positionCount = 0
 
-        for coordinates in self.correlation[imageNum,]:
-        # TODO This is a square, not a circle!
+        for coordinates in self.correlation[cameraNum,]:
+        # NOTE This is a square, not a circle!
+        # It does not matter though since the portholes are circular, which
+        # limits the contours anyway.
             if (coordinates != 0 and coordinates is not None):
                 if (math.fabs(coordinates[0] - contourX) < self.offset and
                         math.fabs(coordinates[1] - contourY) < self.offset):
@@ -492,12 +492,9 @@ class computerVision():
 
         hIncrement = 10
 
-        # Loop through entire
+        # Loop through entire H spectrum (circle) in increments
         for h in range(0, 180, hIncrement):
 
-            #tempMask = self.getColourMask(image, (h,10,95), (h+hIncrement,255,255))
-            #TODO testing: Why is threshold needed?
-            #tempMask = cv2.inRange(image, (h,30,95), (h+hIncrement,255,255))
             tempMask = cv2.inRange(image, (h,0,110), (h+hIncrement,255,255))
 
             contours, hierarchy = cv2.findContours(tempMask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -576,13 +573,12 @@ class computerVision():
                 #sortingList.append([contour, index])
                 sortingList.append([contour[3], index])
 
-        # Sort list according to HSV: Increasing HSV values
-        sortingList = sorted(sortingList, key= lambda sortingList: int(sortingList[0][0]))
-
-        # TODO temporary hack: Since the white and green ranges are known to overlap, sort these via saturation
-        # This effectively means that the later processing (assuming that distinct hue sets exist) can work as
-        # if green and white are completely separate hue ranges
-        sortingList[24:40] = sorted(sortingList[24:40], key =lambda sortingList: int(sortingList[0][1]))
+        # Initially sort list according to saturation
+        # NOTE: White is difficult to seprate from green/blue by Hue.
+        # We are going to assume that white group has the lowest Saturation value instead.
+        sortingList = sorted(sortingList, key= lambda sortingList: int(sortingList[0][1]))
+        # Now we sort the rest of the list 'normally' by Hue
+        sortingList[groupWidth:] = sorted(sortingList[groupWidth:], key= lambda sortingList: int(sortingList[0][0]))
 
         bestStdDev = None
         bestPosition = 0
@@ -698,7 +694,6 @@ class computerVision():
         self.colourCorrelation = self.colourCorrelationBackup.copy()
 
     def saveCorrelation(self):
-        # TODO
         # Update both the current and the backup to the 'updated' state:
         # This is to expect/handle further changes being made
         print("CV: Saving coordinate correlation changes")
