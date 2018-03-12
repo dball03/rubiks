@@ -57,7 +57,7 @@ class Cuber():
 
         solveTime = time.time()
 
-        self.mc.sendString(solution, waitForAck=True)
+        self.mc.MotorControlString(solution)
         endTime = time.time()
 
         faceTurnLength = self.solver.calculateFaceTurnLength(solution)
@@ -121,10 +121,10 @@ class Cuber():
         scrambleString = ' '.join(scrambleSequence)
         print("scramble:{}".format(scrambleString))
 
-        self.mc.sendString(scrambleString, waitForAck=True)
+        self.mc.MotorControlString(scrambleString)
 
         # Update state of cube (for user view) once motor rotations are complete
-        null = self.cv.getCubeState()
+        #null = self.cv.getCubeState()
 
 
     def getImage(self):
