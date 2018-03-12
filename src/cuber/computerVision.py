@@ -581,6 +581,10 @@ class computerVision():
         # Now we sort the rest of the list 'normally' by Hue
         sortingList = sorted(sortingList[groupWidth:], key= lambda sortingList: int(sortingList[0][0]))
 
+        # TODO Added for temporary debug
+        for elem in sortingList:
+            print(elem)
+
         bestStdDev = None
         bestPosition = 0
         for position in range(groupWidth):
