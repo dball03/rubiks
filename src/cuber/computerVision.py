@@ -187,7 +187,7 @@ class computerVision():
             self.maskedImages.append(cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask))
 
             # Move cube to next position
-            self.mc.sendString(self.readSequence[position])
+            self.mc.MotorControlString(self.readSequence[position])
 
         # Output debug images
         for position in range(self.noOfPositions):
@@ -301,10 +301,10 @@ class computerVision():
 
     def nextGuiImageSource(self):
         if self.currentCubeOrientation == (self.noOfPositions -1):
-            self.mc.sendString(self.readSequence[self.currentCubeOrientation])
+            self.mc.MotorControlString(self.readSequence[self.currentCubeOrientation])
             self.currentCubeOrientation = 0
         else:
-            self.mc.sendString(self.readSequence[self.currentCubeOrientation])
+            self.mc.MotorControlString(self.readSequence[self.currentCubeOrientation])
             self.currentCubeOrientation += 1
 
 
@@ -439,7 +439,7 @@ class computerVision():
         # Returns None if no corresponding cube position is found
         positionCount = 0
 
-        for coordinates in self.correlation[cameraNum,]:
+        for coordinates in self.correlation[imageNum,]:
         # NOTE This is a square, not a circle!
         # It does not matter though since the portholes are circular, which
         # limits the contours anyway.
