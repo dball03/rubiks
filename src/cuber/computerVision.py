@@ -82,9 +82,9 @@ class computerVision():
         # NOTE Contour list contains elemnts of [contour, area, cameraNum, averageHsvColour]
         self.contourList = [None]*54
 
-        self.maskedImages = []
-        self.hsvImages = []
-        self.rawImages = []
+        self.maskedImages = [None]*self.noOfPositions
+        self.hsvImages = [None]*self.noOfPositions
+        self.rawImages = [None]*self.noOfPositions
 
         # Some CV reference values
         self.minimumContourArea = 20
@@ -192,6 +192,28 @@ class computerVision():
         # Output debug images
         for position in range(self.noOfPositions):
             cv2.imwrite("outputImages/mask{0}.jpg".format(position), self.maskedImages[position])
+
+    def updateCvImage(self, positionNumber):
+        # This is a spin off from populateCvImages which will update the CV
+        # references (lists of images etc) but only for the given position.
+        # This is used mainly to handle situations where we only care about updating
+        # the image of a particular position
+        # eg colour calibration, where iterating through all cube positions is not desirable.
+
+        rawImage = self.getCvImage(self.cameras[0])
+        self.rawImages[positionNumber] = rawImage
+
+        hsvImage = cv2.cvtColor(rawImage, cv2.COLOR_BGR2HSV)
+
+        equalisedImage = self.applyColourConstancyHSV(hsvImage)
+
+        self.hsvImages[positionNumber] = equalisedImage
+
+        imageHeight, imageWidth, imageChannels = rawImage.shape
+        portholeMask = self.createPortholeMask(imageHeight, imageWidth, imageChannels, positionNumber)
+
+        #self.maskedImages.append(cv2.bitwise_and(rawImage, rawImage, mask = portholeMask))
+        self.maskedImages[positionNumber] = cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask)
 
 
     def getCvImage(self, cameraNum):
@@ -362,7 +384,8 @@ class computerVision():
         print("Recalibrated colour {} to coords {} on camera {}".format(colourInitial, coords, self.currentCubeOrientation))
 
         # Update images to ensure we are referencing the latest state
-        self.populateCvImages()
+        #self.populateCvImages()
+        self.updateCvImage(self.currentCubeOrientation)
 
         # TODO why do the coordinates want to be reversed here?
         #colourHsvValue = self.hsvImages[cameraNum][coords]
