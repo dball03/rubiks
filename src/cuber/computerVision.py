@@ -382,7 +382,7 @@ class computerVision():
 
         # Update images to ensure we are referencing the latest state
         #self.populateCvImages()
-        self.updateCvImage(self.currentCubeOrientation)
+        self.populateCvHelper(self.currentCubeOrientation)
 
         # TODO why do the coordinates want to be reversed here?
         #colourHsvValue = self.hsvImages[cameraNum][coords]
@@ -631,9 +631,6 @@ class computerVision():
             colourGroupings.append(self.getSubList(sortingList, bestPosition+(groupNum*groupWidth), groupWidth, True))
 
             averageGroupingColours.append(np.mean([x[0] for x in colourGroupings[groupNum]], axis=0).astype(int))
-
-        for grouping in colourGroupings:
-            print(grouping)
 
         # Add the white group back into the mix (it was removed previously)
         colourGroupings.append(whiteGroup)
