@@ -175,6 +175,9 @@ class computerVision():
             #rawImage = self.getCvImage(self.cameras[0])
             self.populateCvHelper(position)
 
+            # Move cube into next position with motors
+            self.mc.MotorControlString(self.readSequence[position])
+
     def populateCvHelper(self, positionNumber):
 
         # Get image from camera
