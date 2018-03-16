@@ -36,8 +36,7 @@ class Cuber():
                             'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
                             'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B')
 
-        #TODO not sure where this should originate: for second iteration,
-        # probably needs to be derived by CV, and passed on as required.
+        # This is just a static list of faces, used to generate scrambles.
         self.colours = {0: 'U', 1: 'R', 2: 'F', 3: 'D', 4: 'L', 5: 'B'}
 
 
@@ -81,31 +80,34 @@ class Cuber():
         print("########################################")
 
         # Verify solution
-        verifyState = self.cv.getCubeState()
-        print("post state: {0}".format(verifyState))
+        #verifyState = self.cv.getCubeState()
+        #print("post state: {0}".format(verifyState))
 
-        if (tuple(verifyState) == self.solvedState):
-            print("Cube solved")
-        else:
-            print("Could not verify solution success")
+        #if (tuple(verifyState) == self.solvedState):
+        #    print("Cube solved")
+        #else:
+		#	print("Could not verify solution success")
 
 
     def scrambleCube(self):
         scrambleSequence = []
 
-        moves = randint(10,30)
+        moves = randint(20,40)
 
         operation = None
         lastOperation = None
 
         for x in range(0, moves):
-            operation = randint(0,5)
+            # Generate the face to turn (based on index of colours dict)
+            # Also, disallow the same face from being turned consecutively
+            operation = randint(0,len(self.colours)-1)
             while (operation == lastOperation):
-                operation = randint(0,5)
+                operation = randint(0,len(self.colours)-1)
 
+            # Update the last operation
             lastOperation = operation
 
-            # Perform half turn (2X) if 1
+            # Generate 3 cases of rotation direction (standard, ' and 2)
             rotation = randint(0,2)
 
             if rotation == 0 :

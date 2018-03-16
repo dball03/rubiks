@@ -5,6 +5,7 @@ import numpy as np
 import colorsys as cs
 import copy
 import itertools
+from threading import Thread
 
 from correlation import *
 
@@ -161,62 +162,45 @@ class computerVision():
 
     def populateCvImages(self):
         # Get masked images from all cameras, and populate these into list (for later use)
-        self.maskedImages = []
-        self.hsvImages = []
-        self.rawImages = []
+        self.maskedImages = [None]*self.noOfPositions
+        self.hsvImages = [None]*self.noOfPositions
+        self.rawImages = [None]*self.noOfPositions
 
         for position in range(self.noOfPositions):
+            print('ENTER TO PROCEED')
+            null = raw_input()
             # Get image from camera
             # TODO how should the camera index actually be handled? Completely removed?
             #rawImage = self.getCvImage(position)
-            rawImage = self.getCvImage(self.cameras[0])
-            self.rawImages.append(rawImage)
+            #rawImage = self.getCvImage(self.cameras[0])
+            self.populateCvHelper(position)
 
-            # Convert to HSV
-            hsvImage = cv2.cvtColor(rawImage, cv2.COLOR_BGR2HSV)
+    def populateCvHelper(self, positionNumber):
 
-            equalisedImage = self.applyColourConstancyHSV(hsvImage)
-
-            self.hsvImages.append(equalisedImage)
-
-            # Apply mask to image, and add into list of images
-            imageHeight, imageWidth, imageChannels = rawImage.shape
-            portholeMask = self.createPortholeMask(imageHeight, imageWidth, imageChannels, position)
-
-            #self.maskedImages.append(cv2.bitwise_and(rawImage, rawImage, mask = portholeMask))
-            self.maskedImages.append(cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask))
-
-            # Move cube to next position
-            self.mc.MotorControlString(self.readSequence[position])
-
-        # Output debug images
-        for position in range(self.noOfPositions):
-            cv2.imwrite("outputImages/mask{0}.jpg".format(position), self.maskedImages[position])
-
-    def updateCvImage(self, positionNumber):
-        # This is a spin off from populateCvImages which will update the CV
-        # references (lists of images etc) but only for the given position.
-        # This is used mainly to handle situations where we only care about updating
-        # the image of a particular position
-        # eg colour calibration, where iterating through all cube positions is not desirable.
-
-        rawImage = self.getCvImage(self.cameras[0])
+        # Get image from camera
+        rawImage = self.getCvImage(positionNumber)
         self.rawImages[positionNumber] = rawImage
 
+        # Convert to HSV
         hsvImage = cv2.cvtColor(rawImage, cv2.COLOR_BGR2HSV)
 
+        # Apply equalisation
         equalisedImage = self.applyColourConstancyHSV(hsvImage)
 
         self.hsvImages[positionNumber] = equalisedImage
 
+        # Apply mask to image, and add into list of images
         imageHeight, imageWidth, imageChannels = rawImage.shape
         portholeMask = self.createPortholeMask(imageHeight, imageWidth, imageChannels, positionNumber)
 
         #self.maskedImages.append(cv2.bitwise_and(rawImage, rawImage, mask = portholeMask))
-        self.maskedImages[positionNumber] = cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask)
+        self.maskedImages[positionNumber] = (cv2.bitwise_and(equalisedImage, equalisedImage, mask = portholeMask))
 
 
     def getCvImage(self, cameraNum):
+        # Get image using helper function:
+        # It is required to ensure the camera buffer is empty so we can be sure
+        # that we get an image that is actually 'live'
         rawImage = self.captureImage(cameraNum, True)
 
         return rawImage
@@ -226,6 +210,10 @@ class computerVision():
         # - Get image from relevant camera
         # - Convert from BGR to RGB
         # - Apply filters and debug info as required
+
+        # Use helper function to grab image from camera. Since frames are being
+        # streamed to the GUI, we do not need to worry about emptying the
+        # buffer totally: That will sort itself out.
         frame = self.captureImage(self.currentCubeOrientation, False)
 
         # Draw the visual debug information onto the frame
@@ -294,16 +282,25 @@ class computerVision():
             # frames are only pulled from the buffer (to empty it). Therefore,
             # this does not actually take that much more time compared to
             # taking a single 'fresh' frame.
+            # However, we still do not want to pull more frames from the buffer
+            # than we need to; Just enough to empty the buffer and then take our
+            # 'fresh' image. Grabbing any excess images will add a significant
+            # amount of time as this will involve a camera capture. Hence,
+            # clearing only 'bufferSize' images is desirable: It seems 4 is a
+            # reasonably standard buffer size.
 
             # NOTE Setting the buffer length of the capture object is apparently not
             # working or not available for all cameras
             # Another 'valid' solution is to use another thread to continuously pull frames
             # from the camera as fast as possible to keep the buffer empty, to eliminate this
             # problem. This should use 'captureObject.grab()' as this has less overhead
+            # (does not decode the image).
 
             for i in xrange(4):
                 temp, dumpCapture = tempCamera.read()
-                cv2.imwrite("outputImages/rawcamera{0}{1}.jpg".format(cameraNumber, i), dumpCapture)
+
+                # Additional debug: Can be needed to ensure that camera buffer is being properly purged
+                #cv2.imwrite("outputImages/rawcamera{0}{1}.jpg".format(cameraNumber, i), dumpCapture)
         else:
             # A short (single frame) is needed to normalise some lighting in images:
             # First image often has streaks
@@ -625,22 +622,30 @@ class computerVision():
                 bestStdDev = totalStdDev
                 bestPosition = position
 
+        # Store according to the smallest colour groupings:
+        # Each entry in colourGroupings should represent a set of coherent
+        # coloured cubies/positions
         colourGroupings =[]
         averageGroupingColours = []
         for groupNum in range(numGroups-1):
-            colourGroupings.append(self.getSubList(sortingList, bestPosition+(groupNum*groupWidth), groupWidth, False))
+            colourGroupings.append(self.getSubList(sortingList, bestPosition+(groupNum*groupWidth), groupWidth, True))
 
             averageGroupingColours.append(np.mean([x[0] for x in colourGroupings[groupNum]], axis=0).astype(int))
 
-        # Add the white group back into the mix
+        for grouping in colourGroupings:
+            print(grouping)
+
+        # Add the white group back into the mix (it was removed previously)
         colourGroupings.append(whiteGroup)
         averageGroupingColours.append(np.mean([x[0] for x in whiteGroup], axis=0).astype(int))
 
-        # Map groups to the colour 'templates'
+        # Find all possible orderings of the expected colours
         permutations = list(itertools.permutations(self.colourCorrelation, len(self.colourCorrelation)))
         bestDiff = None
         bestPermutationIndex = 0
 
+        # Find the ordering(permutation) of colours which matches most closely
+        # to the measured colour groupings
         for index, perm in enumerate(permutations):
             # For each permutation of the colour correlation dict
             difference = 0
@@ -656,6 +661,11 @@ class computerVision():
         bestPermutation = permutations[bestPermutationIndex]
         print(bestPermutation)
 
+        # We now know:
+        #   - How the cubies across the cube are grouped into coherent groupings
+        #   - A most-likely relationship between these groups and the expected colours
+        # Hence, we now expand this relationship to obain the colours of all the cubies
+        # across the cube.
         for groupCount, group in enumerate(colourGroupings):
             for colourCount, colour in enumerate(group):
                 # Position of this colour in the cube list
