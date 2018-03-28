@@ -140,10 +140,20 @@ class guiMain:
 
 
     def solveHandler(self):
-        solveThread = threading.Thread(target=self.cuber.solveCube, args=())
+        solveThread = threading.Thread(target=self.solveHandlerHelper, args=())
         solveThread.setDaemon(True)
         solveThread.start()
         #self.cuber.solveCube()
+
+    def solveHandlerHelper(self):
+        # Helper function to show message box for solve results.
+        # TODO this should be reworked to a named tuple or something tidier
+
+        totalTime, cvTime, solveTime, motorTime = self.cuber.solveCube()
+
+        # Spawn msgbox to show results (if the solve was successful)
+        if totalTime is not None:
+            msg.showinfor("Solve Results", "Total Time: {}\nRead Time: {}\nSolve Time: {}\nMotor Time:{}".format(totalTime, cvTime, solveTime, motorTime))
 
 
 if __name__ == "__main__":

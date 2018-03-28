@@ -88,6 +88,10 @@ class Cuber():
         #else:
 		#	print("Could not verify solution success")
 
+        # Return some important info on the results of the solve
+        # TODO this should be tidied up
+        return totalTime, cvReadTime, algorithmTime, motorTime
+
 
     def scrambleCube(self):
         scrambleSequence = []
